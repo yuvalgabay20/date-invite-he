@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>שאלה קטנה…</title>
-<meta name="description" content="הזמנה לדייט. יש רק תשובה נכונה אחת.">
+<meta name="description" content="הזמנה לדייט.">
 <meta name="theme-color" content="#FFF7F1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -457,7 +457,7 @@ a.btn{text-decoration:none}
     <div class="screen is-active" id="screen-ask">
       <p class="eyebrow">שאלה קטנה</p>
       <h1 tabindex="-1" id="askTitle">רוצה לצאת איתי לדייט?</h1>
-      <p class="lede" id="askLede">קחי את הזמן. יש כאן רק תשובה נכונה אחת.</p>
+      <p class="lede" id="askLede">קחי את הזמן.</p>
 
       <svg class="meme" viewBox="0 0 300 300" role="img" aria-labelledby="memeWaitTitle">
         <title id="memeWaitTitle">הכלב מטה את הראש ומחכה לתשובה</title>
@@ -884,13 +884,16 @@ var FOOD_STEERS = [
 
 var state = { plan: SURPRISE, food: null };
 
+/* יומן מלא של מה שהיא ניסתה, לא רק מה שנחת בסוף */
+var log = { planTries: [], foodTries: [], dodges: 0, openedAt: new Date() };
+
 /* ============================================================
    התאמת טקסטים לשמות ולמין
    ============================================================ */
 if (TO) {
   $("askTitle").textContent = "רוצה לצאת איתי לדייט, " + TO + "?";
 }
-$("askLede").textContent  = g("קחי את הזמן. יש כאן רק תשובה נכונה אחת.","קח את הזמן. יש כאן רק תשובה נכונה אחת.");
+$("askLede").textContent  = g("קחי את הזמן.","קח את הזמן.");
 $("whenLede").textContent = g("בחרי תאריך ושעה — אני כבר אדאג לשאר.","בחר תאריך ושעה — אני כבר אדאג לשאר.");
 $("foodLede").textContent = g("ההחלטה החשובה ביותר של הערב. בחרי בתבונה.","ההחלטה החשובה ביותר של הערב. בחר בתבונה.");
 $("doneLede").textContent = g("כבר מחכה. אל תשני את דעתך.","כבר מחכה. אל תשנה את דעתך.");
@@ -1081,6 +1084,7 @@ function scheduleHome(){
 function dodge(fromX, fromY){
   if (!askIsActive()) return;
   escapes++;
+  log.dodges = escapes;
 
   var h = homeRect();
   var w = h.width, ht = h.height;
@@ -1253,6 +1257,7 @@ function hint(text){
 
 function pick(i){
   var chosen = PLANS[i];
+  log.planTries.push(chosen);
   closeList(true);
   clearTimeout(steerTimer);
 
@@ -1337,6 +1342,7 @@ function markFood(i){
 }
 
 function chooseFood(i){
+  log.foodTries.push(FOODS[i].l);
   clearTimeout(foodTimer);
 
   /* הערך הקובע הוא תמיד הבחירה הנכונה, כך שלחיצה מהירה על "סגרנו"
@@ -1420,6 +1426,32 @@ function summaryText(){
     "מה אוכלים: " + (state.food ? state.food.l : "—") +
     (FROM ? "\n\nמחכה לך, " + FROM : "");
 }
+/* ============================================================
+   הדיווח אליך — כל מה שהיא בחרה, כולל מה שניסתה בדרך
+   ============================================================ */
+function resultReport(){
+  var minutes = Math.max(1, Math.round((new Date() - log.openedAt) / 60000));
+  var uniq = function(a){ return a.filter(function(v,i){ return a.indexOf(v) === i; }); };
+  var planOther = uniq(log.planTries.filter(function(v){ return v !== SURPRISE; }));
+  var foodOther = uniq(log.foodTries.filter(function(v){ return v !== FOODS[PICKER].l; }));
+
+  return [
+    (TO ? TO + " ענתה." : "היא ענתה."),
+    "",
+    "מתי: " + prettyDate() + " בשעה " + (timeInput.value || "—"),
+    "מה עושים: " + state.plan,
+    "מה אוכלים: " + (state.food ? state.food.l : "—"),
+    "",
+    "— מה קרה בדרך —",
+    "בריחות של כפתור \"לא\": " + log.dodges,
+    "תוכניות שניסתה לבחור: " + (planOther.length ? planOther.join(", ") : "אף אחת, הלכה ישר על הפתעה"),
+    "מאכלים שניסתה לבחור: " + (foodOther.length ? foodOther.join(", ") : "אף אחד, ויתרה לך מיד"),
+    "זמן על הדף: " + minutes + " דק'",
+    "",
+    "נשלח " + new Date().toLocaleString("he-IL")
+  ].join("\n");
+}
+
 function finish(){
   $("sumDate").textContent = prettyDate();
   $("sumTime").textContent = timeInput.value || "—";
